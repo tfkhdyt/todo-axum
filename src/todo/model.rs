@@ -2,7 +2,7 @@ use super::dto::AddTodoRequest;
 use chrono::Utc;
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::FromRow)]
 pub struct Todo {
     pub id: String,
     pub title: String,

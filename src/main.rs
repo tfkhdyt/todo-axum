@@ -1,5 +1,8 @@
 use anyhow::Result;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{delete, get},
+    Router,
+};
 use std::env;
 use todo::{handler, repo::TodoRepo};
 
@@ -7,6 +10,7 @@ mod db;
 mod error;
 mod todo;
 
+#[derive(Clone)]
 struct AppState {
     todo_repo: TodoRepo,
 }
@@ -26,7 +30,8 @@ async fn main() -> Result<()> {
             "/todos",
             get(handler::find_all_todos).post(handler::add_todo),
         )
-        .with_state(shared_state.into());
+        .route("/todos/:id", delete(handler::delete_todo))
+        .with_state(shared_state);
 
     println!("Running on http://localhost:{}", port);
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port)).await?;
