@@ -1,4 +1,6 @@
-use super::dto::AddTodoRequest;
+use crate::error::AppError;
+
+use super::dto::{AddTodoRequest, UpdateTodoRequest};
 use chrono::Utc;
 use serde::Serialize;
 
@@ -22,5 +24,24 @@ impl Todo {
             created_at: Utc::now().to_string(),
             updated_at: Utc::now().to_string(),
         }
+    }
+
+    pub fn update(&mut self, new_todo: UpdateTodoRequest) -> Result<(), AppError> {
+        new_todo.validate()?;
+        if let Some(title) = new_todo.title {
+            if title != self.title {
+                self.title = title
+            }
+        }
+        if let Some(status) = new_todo.status {
+            if status != self.status {
+                self.status = status
+            }
+        }
+        if self.desc != new_todo.desc {
+            self.desc = new_todo.desc
+        }
+
+        Ok(())
     }
 }

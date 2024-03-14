@@ -25,3 +25,23 @@ impl AddTodoRequest {
         Ok(Todo::new(self))
     }
 }
+
+#[derive(Deserialize)]
+pub struct UpdateTodoRequest {
+    pub title: Option<String>,
+    pub desc: Option<String>,
+    pub status: Option<String>,
+}
+
+impl UpdateTodoRequest {
+    pub fn validate(&self) -> Result<(), AppError> {
+        if let Some(status) = &self.status {
+            match status.as_str() {
+                "todo" | "ongoing" | "done" => (),
+                _ => return Err(AppError::new(StatusCode::BAD_REQUEST, "status is invalid")),
+            }
+        }
+
+        Ok(())
+    }
+}

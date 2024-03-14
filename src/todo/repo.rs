@@ -1,6 +1,7 @@
 use super::model::Todo;
 use crate::error::AppError;
 use axum::http::StatusCode;
+use chrono::Utc;
 use sqlx::{Pool, Sqlite};
 
 #[derive(Clone)]
@@ -47,7 +48,7 @@ impl TodoRepo {
         Ok(todos)
     }
 
-    async fn find_one(&self, id: &str) -> Result<Todo, AppError> {
+    pub async fn find_one(&self, id: &str) -> Result<Todo, AppError> {
         let todo: Todo = sqlx::query_as("SELECT * FROM todos WHERE id = ?1")
             .bind(id)
             .fetch_one(&self.pool)
@@ -56,7 +57,7 @@ impl TodoRepo {
                 println!("Error: {}", err);
                 AppError::new(
                     StatusCode::NOT_FOUND,
-                    format!("failed to find todo with id {}", id),
+                    format!("todo with id {} is not found", id),
                 )
             })?;
 
@@ -74,9 +75,32 @@ impl TodoRepo {
                 println!("Error: {}", err);
                 AppError::new(
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to find all todos",
+                    format!("failed to delete todo with id {}", id),
                 )
             })?;
+
+        Ok(())
+    }
+
+    pub async fn update_one(&self, id: &str, new_todo: Todo) -> Result<(), AppError> {
+        sqlx::query(
+            "UPDATE todos SET title = ?2, desc = ?3, status = ?4, updated_at = ?5
+            WHERE id = ?1",
+        )
+        .bind(id)
+        .bind(new_todo.title)
+        .bind(new_todo.desc)
+        .bind(new_todo.status)
+        .bind(Utc::now().to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to update todo with id {}", id),
+            )
+        })?;
 
         Ok(())
     }

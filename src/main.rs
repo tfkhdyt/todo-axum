@@ -30,7 +30,10 @@ async fn main() -> Result<()> {
             "/todos",
             get(handler::find_all_todos).post(handler::add_todo),
         )
-        .route("/todos/:id", delete(handler::delete_todo))
+        .route(
+            "/todos/:id",
+            delete(handler::delete_todo).put(handler::update_todo),
+        )
         .with_state(shared_state);
 
     println!("Running on http://localhost:{}", port);

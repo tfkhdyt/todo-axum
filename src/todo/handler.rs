@@ -1,4 +1,4 @@
-use super::dto::AddTodoRequest;
+use super::dto::{AddTodoRequest, UpdateTodoRequest};
 use crate::{error::AppError, AppState};
 use axum::{
     extract::{Path, State},
@@ -39,6 +39,22 @@ pub async fn delete_todo(
 
     let response = Json(json!({
         "message": format!("todo with id {} has been deleted", id)
+    }));
+
+    Ok(response)
+}
+
+pub async fn update_todo(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(payload): Json<UpdateTodoRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let mut todo = state.todo_repo.find_one(id.as_str()).await?;
+    todo.update(payload)?;
+    state.todo_repo.update_one(&id, todo).await?;
+
+    let response = Json(json!({
+        "message": format!("todo with id {} has been updated", id)
     }));
 
     Ok(response)
