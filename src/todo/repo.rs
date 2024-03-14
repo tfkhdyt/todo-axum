@@ -1,5 +1,5 @@
 use super::model::Todo;
-use crate::error::AppError;
+use crate::error::{AppError, HttpResult};
 use axum::http::StatusCode;
 use chrono::Utc;
 use sqlx::{Pool, Sqlite};
@@ -14,7 +14,7 @@ impl TodoRepo {
         Self { pool }
     }
 
-    pub async fn create(&self, todo: Todo) -> Result<(), AppError> {
+    pub async fn create(&self, todo: Todo) -> HttpResult<()> {
         sqlx::query(
             "INSERT INTO todos (id, title, desc, status) 
             VALUES (?1, ?2, ?3, ?4)",
@@ -33,7 +33,7 @@ impl TodoRepo {
         Ok(())
     }
 
-    pub async fn find_all(&self) -> Result<Vec<Todo>, AppError> {
+    pub async fn find_all(&self) -> HttpResult<Vec<Todo>> {
         let todos: Vec<Todo> = sqlx::query_as("SELECT * FROM todos")
             .fetch_all(&self.pool)
             .await
@@ -48,7 +48,7 @@ impl TodoRepo {
         Ok(todos)
     }
 
-    pub async fn find_one(&self, id: &str) -> Result<Todo, AppError> {
+    pub async fn find_one(&self, id: &str) -> HttpResult<Todo> {
         let todo: Todo = sqlx::query_as("SELECT * FROM todos WHERE id = ?1")
             .bind(id)
             .fetch_one(&self.pool)
@@ -64,7 +64,7 @@ impl TodoRepo {
         Ok(todo)
     }
 
-    pub async fn delete_one(&self, id: &str) -> Result<(), AppError> {
+    pub async fn delete_one(&self, id: &str) -> HttpResult<()> {
         self.find_one(id).await?;
 
         sqlx::query("DELETE FROM todos WHERE id = ?1")
@@ -82,7 +82,7 @@ impl TodoRepo {
         Ok(())
     }
 
-    pub async fn update_one(&self, id: &str, new_todo: Todo) -> Result<(), AppError> {
+    pub async fn update_one(&self, id: &str, new_todo: Todo) -> HttpResult<()> {
         sqlx::query(
             "UPDATE todos SET title = ?2, desc = ?3, status = ?4, updated_at = ?5
             WHERE id = ?1",

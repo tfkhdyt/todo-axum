@@ -1,4 +1,4 @@
-use crate::error::AppError;
+use crate::error::HttpResult;
 
 use super::dto::{AddTodoRequest, UpdateTodoRequest};
 use chrono::Utc;
@@ -26,7 +26,7 @@ impl Todo {
         }
     }
 
-    pub fn update(&mut self, new_todo: UpdateTodoRequest) -> Result<(), AppError> {
+    pub fn update(&mut self, new_todo: UpdateTodoRequest) -> HttpResult<()> {
         new_todo.validate()?;
         if let Some(title) = new_todo.title {
             if title != self.title {
@@ -38,8 +38,10 @@ impl Todo {
                 self.status = status
             }
         }
-        if self.desc != new_todo.desc {
-            self.desc = new_todo.desc
+        if let Some(_) = new_todo.desc {
+            if new_todo.desc != self.desc {
+                self.desc = new_todo.desc
+            }
         }
 
         Ok(())

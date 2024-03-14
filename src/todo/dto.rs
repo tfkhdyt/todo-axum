@@ -1,5 +1,5 @@
 use super::model::Todo;
-use crate::error::AppError;
+use crate::error::{AppError, HttpResult};
 use axum::http::StatusCode;
 use serde::Deserialize;
 
@@ -11,7 +11,7 @@ pub struct AddTodoRequest {
 }
 
 impl AddTodoRequest {
-    fn validate(&self) -> Result<(), AppError> {
+    fn validate(&self) -> HttpResult<()> {
         match self.status.as_str() {
             "todo" | "ongoing" | "done" => (),
             _ => return Err(AppError::new(StatusCode::BAD_REQUEST, "status is invalid")),
@@ -20,7 +20,7 @@ impl AddTodoRequest {
         Ok(())
     }
 
-    pub fn into_todo(self) -> Result<Todo, AppError> {
+    pub fn into_todo(self) -> HttpResult<Todo> {
         self.validate()?;
         Ok(Todo::new(self))
     }
@@ -34,7 +34,7 @@ pub struct UpdateTodoRequest {
 }
 
 impl UpdateTodoRequest {
-    pub fn validate(&self) -> Result<(), AppError> {
+    pub fn validate(&self) -> HttpResult<()> {
         if let Some(status) = &self.status {
             match status.as_str() {
                 "todo" | "ongoing" | "done" => (),

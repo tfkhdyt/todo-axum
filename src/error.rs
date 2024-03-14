@@ -5,6 +5,8 @@ use axum::{
 };
 use serde::Serialize;
 
+pub type HttpResult<T> = Result<T, AppError>;
+
 pub struct AppError {
     code: StatusCode,
     message: String,
