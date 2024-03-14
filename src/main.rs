@@ -24,7 +24,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route(
             "/todos",
-            get(handler::find_all_todo).post(handler::add_todo),
+            get(handler::find_all_todos).post(handler::add_todo),
         )
         .with_state(shared_state.into());
 

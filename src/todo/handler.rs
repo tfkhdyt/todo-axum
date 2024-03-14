@@ -19,7 +19,7 @@ pub async fn add_todo(
     ))
 }
 
-pub async fn find_all_todo(
+pub async fn find_all_todos(
     State(state): State<Arc<AppState>>,
 ) -> Result<impl IntoResponse, AppError> {
     let todos = state.todo_repo.find_all().await?;
