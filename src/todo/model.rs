@@ -16,7 +16,7 @@ impl Todo {
     pub fn new(todo: AddTodoRequest) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
-            title: todo.title,
+            title: todo.title.trim().to_owned(),
             desc: todo.desc,
             status: todo.status,
             created_at: Utc::now().to_string(),
