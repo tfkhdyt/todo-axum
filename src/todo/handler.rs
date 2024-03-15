@@ -35,7 +35,6 @@ pub async fn delete_todo(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> HttpResult<impl IntoResponse> {
-    state.todo_repo.find_one(&state.pool, &id).await?;
     state.todo_repo.delete_one(&state.pool, &id).await?;
 
     let response = Json(json!({
