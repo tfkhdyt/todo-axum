@@ -13,7 +13,7 @@ pub async fn add_todo(
     Json(payload): Json<AddTodoRequest>,
 ) -> HttpResult<impl IntoResponse> {
     let new_todo = payload.into_todo()?;
-    state.todo_repo.create(new_todo).await?;
+    state.todo_repo.create(&state.pool, new_todo).await?;
 
     let response = (
         StatusCode::CREATED,
@@ -26,7 +26,7 @@ pub async fn add_todo(
 }
 
 pub async fn find_all_todos(State(state): State<AppState>) -> HttpResult<impl IntoResponse> {
-    let todos = state.todo_repo.find_all().await?;
+    let todos = state.todo_repo.find_all(&state.pool).await?;
 
     Ok(Json(todos))
 }
@@ -35,7 +35,8 @@ pub async fn delete_todo(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> HttpResult<impl IntoResponse> {
-    state.todo_repo.delete_one(id.as_str()).await?;
+    state.todo_repo.find_one(&state.pool, &id).await?;
+    state.todo_repo.delete_one(&state.pool, &id).await?;
 
     let response = Json(json!({
         "message": format!("todo with id {} has been deleted", id)
@@ -49,9 +50,9 @@ pub async fn update_todo(
     Path(id): Path<String>,
     Json(payload): Json<UpdateTodoRequest>,
 ) -> HttpResult<impl IntoResponse> {
-    let mut todo = state.todo_repo.find_one(id.as_str()).await?;
+    let mut todo = state.todo_repo.find_one(&state.pool, &id).await?;
     todo.update(payload)?;
-    state.todo_repo.update_one(&id, todo).await?;
+    state.todo_repo.update_one(&state.pool, &id, todo).await?;
 
     let response = Json(json!({
         "message": format!("todo with id {} has been updated", id)

@@ -2,19 +2,17 @@ use super::model::Todo;
 use crate::error::{AppError, HttpResult};
 use axum::http::StatusCode;
 use chrono::Utc;
-use sqlx::{Pool, Sqlite};
+use sqlx::SqlitePool;
 
 #[derive(Clone)]
-pub struct TodoRepo {
-    pool: Pool<Sqlite>,
-}
+pub struct TodoRepo;
 
 impl TodoRepo {
-    pub fn new(pool: Pool<Sqlite>) -> Self {
-        Self { pool }
+    pub fn new() -> Self {
+        Self {}
     }
 
-    pub async fn create(&self, todo: Todo) -> HttpResult<()> {
+    pub async fn create(&self, pool: &SqlitePool, todo: Todo) -> HttpResult<()> {
         sqlx::query(
             "INSERT INTO todos (id, title, desc, status) 
             VALUES (?1, ?2, ?3, ?4)",
@@ -23,7 +21,7 @@ impl TodoRepo {
         .bind(todo.title)
         .bind(todo.desc)
         .bind(todo.status)
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|err| {
             println!("Error: {}", err);
@@ -33,9 +31,9 @@ impl TodoRepo {
         Ok(())
     }
 
-    pub async fn find_all(&self) -> HttpResult<Vec<Todo>> {
+    pub async fn find_all(&self, pool: &SqlitePool) -> HttpResult<Vec<Todo>> {
         let todos: Vec<Todo> = sqlx::query_as("SELECT * FROM todos")
-            .fetch_all(&self.pool)
+            .fetch_all(pool)
             .await
             .map_err(|err| {
                 println!("Error: {}", err);
@@ -48,10 +46,10 @@ impl TodoRepo {
         Ok(todos)
     }
 
-    pub async fn find_one(&self, id: &str) -> HttpResult<Todo> {
+    pub async fn find_one(&self, pool: &SqlitePool, id: &str) -> HttpResult<Todo> {
         let todo: Todo = sqlx::query_as("SELECT * FROM todos WHERE id = ?1")
             .bind(id)
-            .fetch_one(&self.pool)
+            .fetch_one(pool)
             .await
             .map_err(|err| {
                 println!("Error: {}", err);
@@ -64,12 +62,12 @@ impl TodoRepo {
         Ok(todo)
     }
 
-    pub async fn delete_one(&self, id: &str) -> HttpResult<()> {
-        self.find_one(id).await?;
+    pub async fn delete_one(&self, pool: &SqlitePool, id: &str) -> HttpResult<()> {
+        self.find_one(pool, id).await?;
 
         sqlx::query("DELETE FROM todos WHERE id = ?1")
             .bind(id)
-            .execute(&self.pool)
+            .execute(pool)
             .await
             .map_err(|err| {
                 println!("Error: {}", err);
@@ -82,7 +80,7 @@ impl TodoRepo {
         Ok(())
     }
 
-    pub async fn update_one(&self, id: &str, new_todo: Todo) -> HttpResult<()> {
+    pub async fn update_one(&self, pool: &SqlitePool, id: &str, new_todo: Todo) -> HttpResult<()> {
         sqlx::query(
             "UPDATE todos SET title = ?2, desc = ?3, status = ?4, updated_at = ?5
             WHERE id = ?1",
@@ -92,7 +90,7 @@ impl TodoRepo {
         .bind(new_todo.desc)
         .bind(new_todo.status)
         .bind(Utc::now().to_string())
-        .execute(&self.pool)
+        .execute(pool)
         .await
         .map_err(|err| {
             println!("Error: {}", err);

@@ -14,7 +14,12 @@ impl AddTodoRequest {
     fn validate(&self) -> HttpResult<()> {
         match self.status.as_str() {
             "todo" | "ongoing" | "done" => (),
-            _ => return Err(AppError::new(StatusCode::BAD_REQUEST, "status is invalid")),
+            _ => {
+                return Err(AppError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "status is invalid (status at least should be: todo | ongoing | done)",
+                ))
+            }
         }
 
         Ok(())
