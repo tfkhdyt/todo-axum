@@ -11,7 +11,7 @@ pub async fn register(
         .user_repo
         .verify_username_availability(&state.pool, &payload.username)
         .await?;
-    let new_user = payload.into_user(&state.salt, &state.argon2)?;
+    let new_user = payload.into_user()?;
     state.user_repo.create(&state.pool, new_user).await?;
 
     let response = (

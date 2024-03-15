@@ -1,7 +1,7 @@
 use super::dto::AddUserRequest;
 use crate::error::{AppError, HttpResult};
 use argon2::{
-    password_hash::{PasswordHasher, SaltString},
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2,
 };
 use axum::http::StatusCode;
@@ -20,9 +20,12 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(user: AddUserRequest, salt: &SaltString, argon2: &Argon2<'_>) -> HttpResult<Self> {
+    pub fn new(user: AddUserRequest) -> HttpResult<Self> {
+        let salt = SaltString::generate(&mut OsRng);
+        let argon2 = Argon2::default();
+
         let hashed_password = argon2
-            .hash_password(user.password.as_bytes(), salt)
+            .hash_password(user.password.as_bytes(), &salt)
             .map_err(|err| {
                 println!("Error: {}", err);
                 AppError::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to hash password")

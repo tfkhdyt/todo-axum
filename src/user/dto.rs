@@ -1,6 +1,5 @@
 use super::model::User;
 use crate::error::{AppError, HttpResult};
-use argon2::{password_hash::SaltString, Argon2};
 use axum::http::StatusCode;
 use serde::Deserialize;
 
@@ -36,9 +35,9 @@ impl AddUserRequest {
         Ok(())
     }
 
-    pub fn into_user(self, salt: &SaltString, argon2: &Argon2<'_>) -> HttpResult<User> {
+    pub fn into_user(self) -> HttpResult<User> {
         self.validate()?;
-        let new_user = User::new(self, salt, argon2)?;
+        let new_user = User::new(self)?;
 
         Ok(new_user)
     }

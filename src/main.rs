@@ -1,8 +1,4 @@
 use anyhow::Result;
-use argon2::{
-    password_hash::{rand_core::OsRng, SaltString},
-    Argon2,
-};
 use axum::{
     routing::{delete, get, post},
     Router,
@@ -20,8 +16,6 @@ mod user;
 #[derive(Clone)]
 struct AppState {
     pool: SqlitePool,
-    salt: SaltString,
-    argon2: Argon2<'static>,
     todo_repo: TodoRepo,
     user_repo: UserRepo,
 }
@@ -33,15 +27,10 @@ async fn main() -> Result<()> {
 
     let pool = db::get_sqlite_connection().await?;
 
-    let salt = SaltString::generate(&mut OsRng);
-    let argon2 = Argon2::default();
-
     let todo_repo = TodoRepo::new();
     let user_repo = UserRepo::new();
     let shared_state = AppState {
         pool,
-        salt,
-        argon2,
         todo_repo,
         user_repo,
     };
