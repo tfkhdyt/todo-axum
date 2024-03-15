@@ -42,3 +42,35 @@ impl AddUserRequest {
         Ok(new_user)
     }
 }
+
+#[derive(Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+impl LoginRequest {
+    pub fn validate(&self) -> HttpResult<()> {
+        if self.username.len() < 4 {
+            return Err(AppError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "username cannot be less than 4 characters",
+            ));
+        }
+        if self.username.len() > 16 {
+            return Err(AppError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "username cannot be more than 16 characters",
+            ));
+        }
+
+        if self.password.len() < 8 {
+            return Err(AppError::new(
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "password cannot be less than 8 characters",
+            ));
+        }
+
+        Ok(())
+    }
+}

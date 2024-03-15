@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use sqlx::SqlitePool;
 
 #[derive(Clone)]
-pub struct UserRepo {}
+pub struct UserRepo;
 
 impl UserRepo {
     pub fn new() -> Self {
@@ -45,5 +45,25 @@ impl UserRepo {
             })?;
 
         Ok(())
+    }
+
+    pub async fn find_one_by_username(
+        &self,
+        pool: &SqlitePool,
+        username: &str,
+    ) -> HttpResult<User> {
+        let user: User = sqlx::query_as("SELECT * FROM users WHERE username = ?1")
+            .bind(username)
+            .fetch_one(pool)
+            .await
+            .map_err(|err| {
+                println!("Error: {}", err);
+                AppError::new(
+                    StatusCode::NOT_FOUND,
+                    format!("user with username with {} is not found", username),
+                )
+            })?;
+
+        Ok(user)
     }
 }

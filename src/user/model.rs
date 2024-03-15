@@ -2,7 +2,7 @@ use super::dto::AddUserRequest;
 use crate::error::{AppError, HttpResult};
 use argon2::{
     password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
-    Argon2,
+    Argon2, PasswordHash, PasswordVerifier,
 };
 use axum::http::StatusCode;
 use chrono::Utc;
@@ -40,5 +40,23 @@ impl User {
             created_at: Utc::now().to_string(),
             updated_at: Utc::now().to_string(),
         })
+    }
+
+    pub fn check_password(&self, password: &str) -> HttpResult<()> {
+        let parsed_hash = PasswordHash::new(&self.password).map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to parse hashed password",
+            )
+        })?;
+        Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .map_err(|err| {
+                println!("Warn: {}", err);
+                AppError::new(StatusCode::UNAUTHORIZED, "password is invalid")
+            })?;
+
+        Ok(())
     }
 }
