@@ -1,6 +1,7 @@
 use super::model::User;
 use crate::error::{AppError, HttpResult};
 use axum::http::StatusCode;
+use redis::{Client, Commands};
 use sqlx::SqlitePool;
 
 #[derive(Clone)]
@@ -60,8 +61,80 @@ impl UserRepo {
                 println!("Error: {}", err);
                 AppError::new(
                     StatusCode::NOT_FOUND,
-                    format!("user with username with {} is not found", username),
+                    format!("user with username {} is not found", username),
                 )
+            })?;
+
+        Ok(user)
+    }
+
+    pub async fn set_token(
+        &self,
+        client: &Client,
+        access_token: &str,
+        refresh_token: &str,
+        user_id: &str,
+    ) -> HttpResult<()> {
+        let mut conn = client.get_connection().map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get redis connection",
+            )
+        })?;
+
+        conn.set_ex(format!("access_token:{}", &access_token), &user_id, 60 * 5)
+            .map_err(|err| {
+                println!("Error: {}", err);
+                AppError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to store token to cache",
+                )
+            })?;
+        conn.set_ex(
+            format!("refresh_token:{}", &refresh_token),
+            &user_id,
+            60 * 60 * 24 * 7,
+        )
+        .map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to store token to cache",
+            )
+        })?;
+
+        Ok(())
+    }
+
+    pub async fn find_one(
+        &self,
+        client: &Client,
+        pool: &SqlitePool,
+        access_token: &str,
+    ) -> HttpResult<User> {
+        let mut conn = client.get_connection().map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get redis connection",
+            )
+        })?;
+
+        let user_id: String =
+            conn.get(format!("access_token:{}", access_token))
+                .map_err(|err| {
+                    println!("Error: {}", err);
+                    AppError::new(StatusCode::NOT_FOUND, "access token is not found")
+                })?;
+
+        let user: User = sqlx::query_as("SELECT * FROM users WHERE id = ?1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|err| {
+                println!("Error: {}", err);
+                AppError::new(StatusCode::NOT_FOUND, format!("user is not found"))
             })?;
 
         Ok(user)

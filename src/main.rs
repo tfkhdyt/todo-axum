@@ -1,8 +1,10 @@
 use anyhow::Result;
 use axum::{
+    extract::FromRef,
     routing::{delete, get, post},
     Router,
 };
+use axum_extra::extract::cookie::Key;
 use redis::Client;
 use sqlx::SqlitePool;
 use std::env;
@@ -18,14 +20,22 @@ mod user;
 struct AppState {
     pool: SqlitePool,
     redis_client: Client,
+    key: Key,
     todo_repo: TodoRepo,
     user_repo: UserRepo,
+}
+
+impl FromRef<AppState> for Key {
+    fn from_ref(state: &AppState) -> Self {
+        state.key.clone()
+    }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenvy::dotenv()?;
     let port = env::var("PORT")?;
+    let app_secret = env::var("APP_SECRET")?;
 
     let pool = db::get_sqlite_pool().await?;
     let redis_client = db::get_redis_client()?;
@@ -35,6 +45,7 @@ async fn main() -> Result<()> {
     let shared_state = AppState {
         pool,
         redis_client,
+        key: Key::from(app_secret.as_bytes()),
         todo_repo,
         user_repo,
     };
@@ -50,6 +61,7 @@ async fn main() -> Result<()> {
         )
         .route("/auth/register", post(user::handler::register))
         .route("/auth/login", post(user::handler::login))
+        .route("/auth/inspect", post(user::handler::inspect))
         .with_state(shared_state);
 
     println!("Running on http://localhost:{}", port);

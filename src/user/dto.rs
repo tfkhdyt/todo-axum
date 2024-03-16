@@ -1,7 +1,7 @@
 use super::model::User;
 use crate::error::{AppError, HttpResult};
 use axum::http::StatusCode;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct AddUserRequest {
@@ -73,4 +73,13 @@ impl LoginRequest {
 
         Ok(())
     }
+}
+
+#[derive(Serialize)]
+pub struct InspectResponse {
+    pub id: String,
+    pub name: String,
+    pub username: String,
+    pub created_at: String,
+    pub updated_at: String,
 }

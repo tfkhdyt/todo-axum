@@ -1,10 +1,11 @@
-use super::dto::{AddUserRequest, LoginRequest};
+use super::dto::{AddUserRequest, InspectResponse, LoginRequest};
 use crate::{
     error::{AppError, HttpResult},
     AppState,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use redis::Commands;
+use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
+use cookie::time::Duration;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -30,6 +31,7 @@ pub async fn register(
 }
 
 pub async fn login(
+    jar: PrivateCookieJar,
     State(state): State<AppState>,
     Json(payload): Json<LoginRequest>,
 ) -> HttpResult<impl IntoResponse> {
@@ -43,42 +45,56 @@ pub async fn login(
     let access_token = Uuid::new_v4().to_string();
     let refresh_token = Uuid::new_v4().to_string();
 
-    let mut conn = state.redis_client.get_connection().map_err(|err| {
-        println!("Error: {}", err);
-        AppError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to get redis connection",
-        )
-    })?;
+    state
+        .user_repo
+        .set_token(&state.redis_client, &access_token, &refresh_token, &user.id)
+        .await?;
 
-    conn.set_ex(format!("access_token:{}", &access_token), &user.id, 60 * 5)
-        .map_err(|err| {
-            println!("Error: {}", err);
-            AppError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to store token to cache",
-            )
-        })?;
-    conn.set_ex(
-        format!("refresh_token:{}", &refresh_token),
-        &user.id,
-        60 * 60 * 24 * 7,
-    )
-    .map_err(|err| {
-        println!("Error: {}", err);
-        AppError::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to store token to cache",
-        )
-    })?;
+    let access_cookie = Cookie::build(("access_token", access_token))
+        .path("/")
+        .http_only(true)
+        .max_age(Duration::minutes(5));
+    let refresh_cookie = Cookie::build(("refresh_token", refresh_token))
+        .path("/")
+        .http_only(true)
+        .max_age(Duration::days(7));
+
+    let cookie = jar.add(access_cookie).add(refresh_cookie);
 
     let response = (
         StatusCode::CREATED,
+        cookie,
         Json(json!({
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "message": "login success",
         })),
     );
+
+    Ok(response)
+}
+
+pub async fn inspect(
+    jar: PrivateCookieJar,
+    State(state): State<AppState>,
+) -> HttpResult<impl IntoResponse> {
+    let Some(access_token) = jar.get("access_token") else {
+        return Err(AppError::new(
+            StatusCode::UNAUTHORIZED,
+            "access token is invalid",
+        ));
+    };
+
+    let user = state
+        .user_repo
+        .find_one(&state.redis_client, &state.pool, access_token.value())
+        .await?;
+
+    let response = Json(InspectResponse {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+    });
 
     Ok(response)
 }
