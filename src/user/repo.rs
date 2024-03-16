@@ -107,7 +107,7 @@ impl UserRepo {
         Ok(())
     }
 
-    pub async fn find_one(
+    pub async fn find_one_by_access_token(
         &self,
         client: &Client,
         pool: &SqlitePool,
@@ -127,6 +127,39 @@ impl UserRepo {
                     println!("Error: {}", err);
                     AppError::new(StatusCode::NOT_FOUND, "access token is not found")
                 })?;
+
+        let user: User = sqlx::query_as("SELECT * FROM users WHERE id = ?1")
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|err| {
+                println!("Error: {}", err);
+                AppError::new(StatusCode::NOT_FOUND, format!("user is not found"))
+            })?;
+
+        Ok(user)
+    }
+
+    pub async fn find_one_by_refresh_token(
+        &self,
+        client: &Client,
+        pool: &SqlitePool,
+        refresh_token: &str,
+    ) -> HttpResult<User> {
+        let mut conn = client.get_connection().map_err(|err| {
+            println!("Error: {}", err);
+            AppError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to get redis connection",
+            )
+        })?;
+
+        let user_id: String = conn
+            .get(format!("refresh_token:{}", refresh_token))
+            .map_err(|err| {
+                println!("Error: {}", err);
+                AppError::new(StatusCode::NOT_FOUND, "refresh token is not found")
+            })?;
 
         let user: User = sqlx::query_as("SELECT * FROM users WHERE id = ?1")
             .bind(user_id)

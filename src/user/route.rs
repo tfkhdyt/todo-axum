@@ -1,4 +1,4 @@
-use super::handler::{inspect, login, register};
+use super::handler::{inspect, login, refresh_token, register};
 use crate::AppState;
 use axum::{
     routing::{get, post},
@@ -10,4 +10,5 @@ pub fn user_route() -> Router<AppState> {
         .route("/register", post(register))
         .route("/login", post(login))
         .route("/inspect", get(inspect))
+        .route("/refresh", post(refresh_token))
 }
