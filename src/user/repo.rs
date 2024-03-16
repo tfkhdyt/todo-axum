@@ -22,7 +22,7 @@ impl UserRepo {
             .fetch_one(pool)
             .await;
 
-        if let Ok(_) = user {
+        if user.is_ok() {
             return Err(AppError::new(
                 StatusCode::BAD_REQUEST,
                 "username has been used",
@@ -83,7 +83,7 @@ impl UserRepo {
             )
         })?;
 
-        conn.set_ex(format!("access_token:{}", &access_token), &user_id, 60 * 5)
+        conn.set_ex(format!("access_token:{}", &access_token), user_id, 60 * 5)
             .map_err(|err| {
                 println!("Error: {}", err);
                 AppError::new(
@@ -93,7 +93,7 @@ impl UserRepo {
             })?;
         conn.set_ex(
             format!("refresh_token:{}", &refresh_token),
-            &user_id,
+            user_id,
             60 * 60 * 24 * 7,
         )
         .map_err(|err| {
@@ -134,7 +134,7 @@ impl UserRepo {
             .await
             .map_err(|err| {
                 println!("Error: {}", err);
-                AppError::new(StatusCode::NOT_FOUND, format!("user is not found"))
+                AppError::new(StatusCode::NOT_FOUND, "user is not found")
             })?;
 
         Ok(user)
@@ -167,7 +167,7 @@ impl UserRepo {
             .await
             .map_err(|err| {
                 println!("Error: {}", err);
-                AppError::new(StatusCode::NOT_FOUND, format!("user is not found"))
+                AppError::new(StatusCode::NOT_FOUND, "user is not found")
             })?;
 
         Ok(user)

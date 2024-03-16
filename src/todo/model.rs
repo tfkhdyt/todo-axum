@@ -38,10 +38,8 @@ impl Todo {
                 self.status = status
             }
         }
-        if let Some(_) = new_todo.desc {
-            if new_todo.desc != self.desc {
-                self.desc = new_todo.desc
-            }
+        if new_todo.desc.is_some() && new_todo.desc != self.desc {
+            self.desc = new_todo.desc
         }
 
         Ok(())
