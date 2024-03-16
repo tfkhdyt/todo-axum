@@ -1,9 +1,5 @@
 use anyhow::Result;
-use axum::{
-    extract::FromRef,
-    routing::{delete, get, post},
-    Router,
-};
+use axum::{extract::FromRef, Router};
 use axum_extra::extract::cookie::Key;
 use redis::Client;
 use sqlx::SqlitePool;
@@ -51,17 +47,8 @@ async fn main() -> Result<()> {
     };
 
     let app = Router::new()
-        .route(
-            "/todos",
-            get(todo::handler::find_all_todos).post(todo::handler::add_todo),
-        )
-        .route(
-            "/todos/:id",
-            delete(todo::handler::delete_todo).put(todo::handler::update_todo),
-        )
-        .route("/auth/register", post(user::handler::register))
-        .route("/auth/login", post(user::handler::login))
-        .route("/auth/inspect", post(user::handler::inspect))
+        .nest("/todos", todo::route::todo_route())
+        .nest("/auth", user::route::user_route())
         .with_state(shared_state);
 
     println!("Running on http://localhost:{}", port);
