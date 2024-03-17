@@ -5,11 +5,13 @@ use redis::Client;
 use sqlx::SqlitePool;
 use std::env;
 use todo::repo::TodoRepo;
+use token::TokenManager;
 use user::repo::UserRepo;
 
 mod db;
 mod error;
 mod todo;
+mod token;
 mod user;
 
 #[derive(Clone)]
@@ -19,6 +21,7 @@ struct AppState {
     key: Key,
     todo_repo: TodoRepo,
     user_repo: UserRepo,
+    token_manager: TokenManager,
 }
 
 impl FromRef<AppState> for Key {
@@ -38,12 +41,15 @@ async fn main() -> Result<()> {
 
     let todo_repo = TodoRepo::new();
     let user_repo = UserRepo::new();
+    let token_manager = TokenManager::new();
+
     let shared_state = AppState {
         pool,
         redis_client,
         key: Key::from(app_secret.as_bytes()),
         todo_repo,
         user_repo,
+        token_manager,
     };
 
     let app = Router::new()

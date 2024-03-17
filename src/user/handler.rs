@@ -4,10 +4,8 @@ use crate::{
     AppState,
 };
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use axum_extra::extract::{cookie::Cookie, PrivateCookieJar};
-use cookie::time::Duration;
+use axum_extra::extract::PrivateCookieJar;
 use serde_json::json;
-use uuid::Uuid;
 
 pub async fn register(
     State(state): State<AppState>,
@@ -42,28 +40,14 @@ pub async fn login(
         .await?;
     user.check_password(&payload.password)?;
 
-    let access_token = Uuid::new_v4().to_string();
-    let refresh_token = Uuid::new_v4().to_string();
-
-    state
-        .user_repo
-        .set_token(&state.redis_client, &access_token, &refresh_token, &user.id)
+    let token_cookie = state
+        .token_manager
+        .create_token(&state.redis_client, jar, &user.id)
         .await?;
-
-    let access_cookie = Cookie::build(("access_token", access_token))
-        .path("/")
-        .http_only(true)
-        .max_age(Duration::minutes(5));
-    let refresh_cookie = Cookie::build(("refresh_token", refresh_token))
-        .path("/")
-        .http_only(true)
-        .max_age(Duration::days(7));
-
-    let cookie = jar.add(access_cookie).add(refresh_cookie);
 
     let response = (
         StatusCode::CREATED,
-        cookie,
+        token_cookie,
         Json(json!({
             "message": "login success",
         })),
@@ -83,10 +67,12 @@ pub async fn inspect(
         ));
     };
 
-    let user = state
-        .user_repo
-        .find_one_by_access_token(&state.redis_client, &state.pool, access_token.value())
+    let user_id = state
+        .token_manager
+        .find_user_id_by_access_token(&state.redis_client, access_token.value())
         .await?;
+
+    let user = state.user_repo.find_one(&state.pool, &user_id).await?;
 
     let response = Json(InspectResponse {
         id: user.id,
@@ -110,33 +96,21 @@ pub async fn refresh_token(
         ));
     };
 
-    let user = state
-        .user_repo
-        .find_one_by_refresh_token(&state.redis_client, &state.pool, old_refresh_token.value())
+    let user_id = state
+        .token_manager
+        .find_user_id_by_refresh_token(&state.redis_client, old_refresh_token.value())
         .await?;
 
-    let access_token = Uuid::new_v4().to_string();
-    let refresh_token = Uuid::new_v4().to_string();
+    let user = state.user_repo.find_one(&state.pool, &user_id).await?;
 
-    state
-        .user_repo
-        .set_token(&state.redis_client, &access_token, &refresh_token, &user.id)
+    let token_cookie = state
+        .token_manager
+        .create_token(&state.redis_client, jar, &user.id)
         .await?;
-
-    let access_cookie = Cookie::build(("access_token", access_token))
-        .path("/")
-        .http_only(true)
-        .max_age(Duration::minutes(5));
-    let refresh_cookie = Cookie::build(("refresh_token", refresh_token))
-        .path("/")
-        .http_only(true)
-        .max_age(Duration::days(7));
-
-    let cookie = jar.add(access_cookie).add(refresh_cookie);
 
     let response = (
         StatusCode::CREATED,
-        cookie,
+        token_cookie,
         Json(json!({
             "message": "refresh success",
         })),
